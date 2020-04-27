@@ -1,12 +1,14 @@
 # Cost functions
 """
-    mae(ŷ, y)
+    mae(ŷ, y; agg=mean)
 
-Return the mean of absolute error; calculated as
-`sum(abs.(ŷ .- y)) / length(y)`.
+Return the Mean Absolute Error. 
+
+    l = abs.(ŷ .- y)
+
+The results
 """
-mae(ŷ, y) = sum(abs.(ŷ .- y)) * 1 // length(y)
-
+mae(ŷ, y; agg=mean) = agg(abs.(ŷ .- y))
 
 """
     mse(ŷ, y)
@@ -20,8 +22,7 @@ julia> Flux.mse([0, 2], [1, 1])
 1//1
 ```
 """
-mse(ŷ, y) = sum((ŷ .- y).^2) * 1 // length(y)
-
+mse(ŷ, y; agg=mean) = agg((ŷ .- y).^2)
 
 """
     msle(ŷ, y; ϵ=eps(eltype(ŷ)))
@@ -32,12 +33,12 @@ The `ϵ` term provides numerical stability.
 
 Penalizes an under-predicted estimate greater than an over-predicted estimate.
 """
-msle(ŷ, y; ϵ=eps(eltype(ŷ))) = sum((log.(ŷ .+ ϵ) .- log.(y .+ ϵ)).^2) * 1 // length(y)
+msle(ŷ, y; agg=mean, ϵ=eps(eltype(ŷ))) = agg((log.(ŷ .+ ϵ) .- log.(y .+ ϵ)).^2)
 
 
 
 """
-    huber_loss(ŷ, y; δ=1.0)
+    huber_loss(ŷ, y; δ=1)
 
 Return the mean of the [Huber loss](https://en.wikipedia.org/wiki/Huber_loss)
 given the prediction `ŷ` and true values `y`.
@@ -46,24 +47,24 @@ given the prediction `ŷ` and true values `y`.
     Huber loss = |
                  |  δ * (|ŷ - y| - 0.5 * δ), otherwise
 """
-function huber_loss(ŷ, y;  δ=eltype(ŷ)(1))
+function huber_loss(ŷ, y; agg=mean, δ=one(eltype(ŷ)))
    abs_error = abs.(ŷ .- y)
    temp = abs_error .<  δ
    x = eltype(ŷ)(0.5)
-   hub_loss = sum(((abs_error.^2) .* temp) .* x .+ δ*(abs_error .- x*δ) .* (1 .- temp)) * 1 // length(y)
+   agg(((abs_error.^2) .* temp) .* x .+ δ*(abs_error .- x*δ) .* (1 .- temp))
 end
 
-function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::Nothing)
-  return -sum(y .* log.(ŷ)) * 1 // size(y, 2)
-end
+# function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::Nothing)
+#   return -sum(y .* log.(ŷ)) * 1 // size(y, 2)
+# end
 
-function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::Number)
-  return -sum(y .* log.(ŷ)) .* weight * 1 // size(y, 2)
-end
+# function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::Number)
+#   return -sum(y .* log.(ŷ)) .* weight * 1 // size(y, 2)
+# end
 
-function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::AbstractVector)
-  return -sum(y .* log.(ŷ) .* weight) * 1 // size(y, 2)
-end
+# function _crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat, weight::AbstractVector)
+#   return -sum(y .* log.(ŷ) .* weight) * 1 // size(y, 2)
+# end
 
 """
     crossentropy(ŷ, y; weight = nothing)
@@ -82,7 +83,10 @@ julia> Flux.crossentropy(softmax([-1.1491, 0.8619, 0.3127]), [1, 1, 0])
 3.085467254747739
 ```
 """
-crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat; weight=nothing) = _crossentropy(ŷ, y, weight)
+# crossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat; weight=nothing) = _crossentropy(ŷ, y, weight)
+function crossentropy(ŷ, y; dims=1, agg=mean, ϵ=eps(eltype(ŷ)))
+    agg(.-sum(y .* log.(ŷ .+ ϵ); dims=dims))
+end
 
 """
     logitcrossentropy(ŷ, y; weight = 1)
@@ -101,8 +105,11 @@ julia> Flux.logitcrossentropy([-1.1491, 0.8619, 0.3127], [1, 1, 0])
 3.085467254747738
 ```
 """
-function logitcrossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat; weight = 1)
-  return -sum(y .* logsoftmax(ŷ) .* weight) * 1 // size(y, 2)
+# function logitcrossentropy(ŷ::AbstractVecOrMat, y::AbstractVecOrMat; weight = 1)
+#   return -sum(y .* logsoftmax(ŷ) .* weight) * 1 // size(y, 2)
+# end
+function logitcrossentropy(ŷ, y; dims=1, agg=mean)
+    agg(.-sum(y .* logsoftmax(ŷ; dims=dims); dims=dims))
 end
 
 """
@@ -123,10 +130,12 @@ julia> Flux.binarycrossentropy.(σ.([-1.1491, 0.8619, 0.3127]), [1, 1, 0])
  0.8616703662235441
 ```
 """
-binarycrossentropy(ŷ, y; ϵ=eps(ŷ)) = -y*log(ŷ + ϵ) - (1 - y)*log(1 - ŷ + ϵ)
-
+# binarycrossentropy(ŷ, y; ϵ=eps(ŷ)) = -y*log(ŷ + ϵ) - (1 - y)*log(1 - ŷ + ϵ)
+function binarycrossentropy(ŷ, y; agg=mean, ϵ=eps(eltype(ŷ)))
+    agg(@.(-y*log(ŷ+ϵ) - (1-y)*log(1-ŷ+ϵ)))
+end
 # Re-definition to fix interaction with CuArrays.
-CuArrays.@cufunc binarycrossentropy(ŷ, y; ϵ=eps(ŷ)) = -y*log(ŷ + ϵ) - (1 - y)*log(1 - ŷ + ϵ)
+# CuArrays.@cufunc binarycrossentropy(ŷ, y; ϵ=eps(ŷ)) = -y*log(ŷ + ϵ) - (1 - y)*log(1 - ŷ + ϵ)
 
 """
     logitbinarycrossentropy(ŷ, y)
@@ -145,10 +154,13 @@ julia> Flux.logitbinarycrossentropy.([-1.1491, 0.8619, 0.3127], [1, 1, 0])
  0.8616703662235443
 ```
 """
-logitbinarycrossentropy(ŷ, y) = (1 - y)*ŷ - logσ(ŷ)
+# logitbinarycrossentropy(ŷ, y) = (1 - y)*ŷ - logσ(ŷ)
 
+function logitcrossentropy(ŷ, y; agg=mean, ϵ=eps(eltype(ŷ)))
+    agg(@.((1-y)*ŷ - logsigmoid(ŷ)))
+end
 # Re-definition to fix interaction with CuArrays.
-CuArrays.@cufunc logitbinarycrossentropy(ŷ, y) = (1 - y)*ŷ - logσ(ŷ)
+# CuArrays.@cufunc logitbinarycrossentropy(ŷ, y) = (1 - y)*ŷ - logσ(ŷ)
 
 """
     normalise(x; dims=1)
@@ -177,8 +189,8 @@ julia> Flux.normalise(a, dims=2)
 ```
 """
 function normalise(x::AbstractArray; dims=1)
-  μ′ = mean(x, dims = dims)
-  σ′ = std(x, dims = dims, mean = μ′, corrected=false)
+  μ′ = mean(x, dims=dims)
+  σ′ = std(x, dims=dims, mean=μ′, corrected=false)
   return (x .- μ′) ./ σ′
 end
 
@@ -194,21 +206,21 @@ from the other.
 It is always non-negative and zero only when both the distributions are equal
 everywhere.
 """
-function kldivergence(ŷ, y)
-  entropy = sum(y .* log.(y)) * 1 //size(y,2)
-  cross_entropy = crossentropy(ŷ, y)
+function kldivergence(ŷ, y; dims=1, agg=mean, ϵ=eps(eltype(ŷ)))
+  entropy = agg(sum(y .* log.(y .+ ϵ), dims=dims))
+  cross_entropy = crossentropy(ŷ, y; dims=dims, agg=agg, ϵ=ϵ)
   return entropy + cross_entropy
 end
 
 """
     poisson(ŷ, y)
 
-Return how much the predicted distribution `ŷ` diverges from the expected Poisson
-distribution `y`; calculated as `sum(ŷ .- y .* log.(ŷ)) / size(y, 2)`.
-
+# Return how much the predicted distribution `ŷ` diverges from the expected Poisson
+# distribution `y`; calculated as `sum(ŷ .- y .* log.(ŷ)) / size(y, 2)`.
+REDO
 [More information.](https://peltarion.com/knowledge-center/documentation/modeling-view/build-an-ai-model/loss-functions/poisson).
 """
-poisson(ŷ, y) = sum(ŷ .- y .* log.(ŷ)) * 1 // size(y,2)
+poisson(ŷ, y; agg=mean) = agg(ŷ .- y .* log.(ŷ))
 
 """
     hinge(ŷ, y)
@@ -219,7 +231,7 @@ prediction `ŷ` and true labels `y` (containing 1 or -1); calculated as
 
 See also: [`squared_hinge`](@ref)
 """
-hinge(ŷ, y) = sum(max.(0, 1 .-  ŷ .* y)) * 1 // size(y, 2)
+hinge(ŷ, y; agg=mean) = agg(max.(0, 1 .-  ŷ .* y))
 
 """
     squared_hinge(ŷ, y)
@@ -229,7 +241,7 @@ Return the squared hinge loss given the prediction `ŷ` and true labels `y`
 
 See also: [`hinge`](@ref)
 """
-squared_hinge(ŷ, y) = sum((max.(0, 1 .- ŷ .* y)).^2) * 1 // size(y, 2)
+squared_hinge(ŷ, y; agg=mean) = agg((max.(0, 1 .- ŷ .* y)).^2)
 
 """
     dice_coeff_loss(ŷ, y; smooth=1)
@@ -240,7 +252,7 @@ architecture.
 Similar to the F1_score. Calculated as:
     1 - 2*sum(|ŷ .* y| + smooth) / (sum(ŷ.^2) + sum(y.^2) + smooth)`
 """
-dice_coeff_loss(ŷ, y; smooth=eltype(ŷ)(1.0)) = 1 - (2*sum(y .* ŷ) + smooth) / (sum(y.^2) + sum(ŷ.^2) + smooth)
+dice_coeff_loss(ŷ, y; smooth=eltype(ŷ)(1.0)) = 1 - (2*sum(y .* ŷ) + smooth) / (sum(y.^2) + sum(ŷ.^2) + smooth) #TODO
 
 """
     tversky_loss(ŷ, y; β=0.7)
@@ -251,13 +263,14 @@ Larger β weigh recall higher than precision (by placing more emphasis on false 
 Calculated as:
     1 - sum(|y .* ŷ| + 1) / (sum(y .* ŷ + β*(1 .- y) .* ŷ + (1 - β)*y .* (1 .- ŷ)) + 1)
 """
-tversky_loss(ŷ, y; β=eltype(ŷ)(0.7)) = 1 - (sum(y .* ŷ) + 1) / (sum(y .* ŷ + β*(1 .- y) .* ŷ + (1 - β)*y .* (1 .- ŷ)) + 1)
+tversky_loss(ŷ, y; β=eltype(ŷ)(0.7)) = 1 - (sum(y .* ŷ) + 1) / (sum(y .* ŷ + β*(1 .- y) .* ŷ + (1 - β)*y .* (1 .- ŷ)) + 1) #TODO
 
 """
     flatten(x::AbstractArray)
 
-Transform (w, h, c, b)-shaped input into (w × h × c, b)-shaped output
-by linearizing all values for each element in the batch.
+Reshape arbitrarly-shaped input into a matrix-shaped output
+preserving the last dimension size. 
+Equivalent to `reshape(x, :, size(x)[end])`.
 """
 function flatten(x::AbstractArray)
   return reshape(x, :, size(x)[end])
