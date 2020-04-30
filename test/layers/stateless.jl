@@ -89,18 +89,18 @@ const ϵ = 1e-7
     @test Flux.poisson_loss(ŷ, y) ≈ 0.6278353988097339
     @test Flux.poisson_loss(y, y) ≈ 0.5044459776946685
   end
-  
+
   y = [1.0 0.5 0.3 2.4]
   ŷ = [0 1.4 0.5 1.2]
   @testset "dice_coeff_loss" begin
-    @test Flux.dice_coeff_loss(ŷ, y, dims=1) ≈ 0.2799999999999999
-    @test Flux.dice_coeff_loss(y, y, dims=1) ≈ 0.0
+    @test Flux.dice_coeff_loss(ŷ, y, dims=(1,2)) ≈ 0.2799999999999999
+    @test Flux.dice_coeff_loss(y, y, dims=(1,2)) ≈ 0.0
   end
 
   @testset "tversky_loss" begin
-    @test Flux.tversky_loss(ŷ, y, dims=1) ≈ -0.06772009029345383
-    @test Flux.tversky_loss(ŷ, y, dims=1, β = 0.8) ≈ -0.09490740740740744
-    @test Flux.tversky_loss(y, y, dims=1) ≈ -0.5576923076923075
+    @test Flux.tversky_loss(ŷ, y, dims=(1,2)) ≈ 0.036175710594315236
+    @test Flux.tversky_loss(ŷ, y, dims=(1,2), β = 0.8) ≈ 0.06281407035175879
+    @test Flux.tversky_loss(y, y, dims=(1,2)) ≈ -0.6904761904761902
   end
 
   @testset "no spurious promotions" begin

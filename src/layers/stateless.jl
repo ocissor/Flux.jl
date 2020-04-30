@@ -50,7 +50,8 @@ wsum(w::Number, x; dims) = w .* sum(x, dims=dims)
 wsum(w::AbstractArray, x; dims) = sum( w .* x, dims=dims)
 
 """
-    crossentropy(ŷ, y; weight=nothing, dims=1, ϵ=eps(eltype(ŷ)), agg=mean)
+    crossentropy(ŷ, y; weight=nothing, dims=1, ϵ=eps(eltype(ŷ)), 
+                       logits=false, agg=mean)
 
 Return the cross entropy between the given probability distributions;
 calculated as
@@ -60,16 +61,22 @@ calculated as
 `weight` can be `nothing`, a number or an array.
 `weight=nothing` acts like `weight=1` but is faster.
 
+If `logits=true`, the input `̂y` is first fed to a [`softmax`](@ref) layer.
+
 See also: [`Flux.logitcrossentropy`](@ref), [`Flux.binarycrossentropy`](@ref), [`Flux.logitbinarycrossentropy`](@ref)
 """
-function crossentropy(ŷ, y; dims=1, agg=mean, ϵ=epseltype(ŷ), weight=nothing)
+function crossentropy(ŷ, y; dims=1, agg=mean, ϵ=epseltype(ŷ), 
+                    weight=nothing, logits=false)
+  if logits
+    return logitcrossentropy(ŷ, y; dims=dims, agg=agg, weight=weight)
+  end
   agg(.-wsum(weight, y .* log.(ŷ .+ ϵ); dims=dims))
 end
 
 """
     logitcrossentropy(ŷ, y; weight=nothing, agg=mean, dims=1)
 
-Return the crossentropy computed after a [`Flux.logsoftmax`](@ref) operation;
+Return the cross[1.0 0.5 0.3 2.4]entropy computed after a [`Flux.logsoftmax`](@ref) operation;
 calculated as
 
     agg(.-sum(weight .* y .* logsoftmax(ŷ; dims=dims); dims=dims))
@@ -84,15 +91,18 @@ function logitcrossentropy(ŷ, y; dims=1, agg=mean, weight=nothing)
 end
 
 """
-    binarycrossentropy(ŷ, y; agg=mean, ϵ=epseltype(ŷ))
+    binarycrossentropy(ŷ, y; agg=mean, ϵ=epseltype(ŷ), logits=false)
 
 Return ``-y*\\log(ŷ + ϵ) - (1-y)*\\log(1-ŷ + ϵ)``. The `ϵ` term provides numerical stability.
 
 Typically, the prediction `ŷ` is given by the output of a [`sigmoid`](@ref) activation.
-
+If `logits=true`, the input `̂y` is first fed to a [`sigmoid`](@ref) activation.
 See also: [`Flux.crossentropy`](@ref), [`Flux.logitcrossentropy`](@ref), [`Flux.logitbinarycrossentropy`](@ref)
 """
-function binarycrossentropy(ŷ, y; agg=mean, ϵ=epseltype(ŷ))
+function binarycrossentropy(ŷ, y; agg=mean, ϵ=epseltype(ŷ), logits=false)
+  if logits
+    return logitbinarycrossentropy(ŷ, y; agg=agg)
+  end
   agg(@.(-y*log(ŷ+ϵ) - (1-y)*log(1-ŷ+ϵ)))
 end
 
