@@ -4,6 +4,7 @@
 
     d = DataLoader(X, batchsize=2)
     batches = collect(d)
+    @test eltype(batches) == eltype(d) == typeof(X)
     @test length(batches) == 3
     @test batches[1] == X[:,1:2]
     @test batches[2] == X[:,3:4]
@@ -11,18 +12,21 @@
 
     d = DataLoader(X, batchsize=2, partial=false)
     batches = collect(d)
+    @test eltype(batches) == eltype(d) == typeof(X)
     @test length(batches) == 2
     @test batches[1] == X[:,1:2]
     @test batches[2] == X[:,3:4]
 
     d = DataLoader((X,), batchsize=2, partial=false)
     batches = collect(d)
+    @test eltype(batches) == eltype(d) == Tuple{typeof(X)}
     @test length(batches) == 2
     @test batches[1] == (X[:,1:2],)
     @test batches[2] == (X[:,3:4],)
 
     d = DataLoader((X, Y), batchsize=2)
     batches = collect(d)
+    @test eltype(batches) == eltype(d) == Tuple{typeof(X), typeof(Y)}
     @test length(batches) == 3
     @test length(batches[1]) == 2
     @test length(batches[2]) == 2

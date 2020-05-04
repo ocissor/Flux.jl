@@ -1,7 +1,7 @@
 # Adapted from Knet's src/data.jl (author: Deniz Yuret)
 
-struct DataLoader
-    data
+struct DataLoader{D}
+    data::D
     batchsize::Int
     nobs::Int
     partial::Bool
@@ -24,7 +24,7 @@ If `partial=false`, drops the last mini-batch if it is smaller than the batchsiz
 
 The original data is preserved in the `data` field of the DataLoader. 
 
-Example usage:
+Usage example:
 
     Xtrain = rand(10, 100)
     train_loader = DataLoader(Xtrain, batchsize=2) 
@@ -98,5 +98,10 @@ function _nobs(data::Tuple)
     return n
 end
 
-_getobs(data::AbstractArray, i) = data[(Base.Colon() for _=1:ndims(data)-1)..., i]
+function _getobs(data::A, i) where A<:AbstractArray{T,N} where {T,N}
+    getindex(data, ntuple(i->Colon(), N-1)..., i)
+end
+
 _getobs(data::Tuple, i) = ((_getobs(x, i) for x in data)...,)
+
+Base.eltype(d::DataLoader{D}) where D = D
