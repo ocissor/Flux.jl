@@ -2,7 +2,6 @@ using Flux
 using Flux.Data
 using Test 
 using Random, Statistics, LinearAlgebra
-using Documenter
 using IterTools: ncycle
 
 Random.seed!(0)
@@ -38,8 +37,9 @@ end
   end
 end
 
-@testset "Docs" begin
-  if VERSION >= v"1.4"
+@static if VERSION >= v"1.4"
+  using Documenter
+  @testset "Docs" begin
     DocMeta.setdocmeta!(Flux, :DocTestSetup, :(using Flux); recursive=true)
     doctest(Flux)
   end

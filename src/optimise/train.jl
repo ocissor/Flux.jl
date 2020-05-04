@@ -56,14 +56,17 @@ function stop()
   throw(StopException())
 end
 
+maketuple(x) = (x,)
+maketuple(x::Tuple) = x
+
 """
     train!(loss, params, data, opt; cb)
 
-For each datapoint `d` in `data` compute the gradient of `loss(d...)` through
-backpropagation and call the optimizer `opt`.
+For each datapoint `d` in `data`, assumed to be a tuple, compute the gradient of `loss(d...)` 
+with respect to `params`,  and call the optimizer `opt`.
 
-In case datapoints `d` are of numeric array type, assume no splatting is needed
-and compute the gradient of `loss(d)`.
+If `data` yields a tuple mini-batch `d` under iteration, it will be splatted in the function call
+`loss(d...)`, otherwise `loss(d)` will be called for non-tuple mini-batches.
 
 A callback is given with the keyword argument `cb`. For example, this will print
 "training" every 10 seconds (using [`Flux.throttle`](@ref)):
@@ -80,14 +83,8 @@ function train!(loss, ps, data, opt; cb = () -> ())
   cb = runall(cb)
   @progress for d in data
     try
-      if d isa AbstractArray{<:Number}
-        gs = gradient(ps) do
-          loss(d)
-        end
-      else
-        gs = gradient(ps) do
-          loss(d...)
-        end
+      gs = gradient(ps) do
+          loss(maketuple(d)...)
       end
       update!(opt, ps, gs)
       cb()
