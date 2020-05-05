@@ -76,7 +76,7 @@ end
 """
     logitcrossentropy(ŷ, y; weight=nothing, agg=mean, dims=1)
 
-Return the cross[1.0 0.5 0.3 2.4]entropy computed after a [`Flux.logsoftmax`](@ref) operation;
+Return the crossentropy computed after a [`Flux.logsoftmax`](@ref) operation;
 calculated as
 
     agg(.-sum(weight .* y .* logsoftmax(ŷ; dims=dims); dims=dims))
